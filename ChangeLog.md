@@ -4,9 +4,9 @@
 
 ### 1.0.1-rc
 
-    Release date: 
+    Release date:
 
-    - 
+    - Add missing strftime dependency
 
 ### 1.0.0
 
