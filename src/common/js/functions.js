@@ -1,670 +1,234 @@
 /*
- * pwix:date/src/common/js/functions.js
- *
- * Taxonomy:
- *  - entity: the object domain for which we are going to manage DateJs periods
- *  - record: the document which maintains the datas for a single DateJs period
+ * pwix:date/src/common/js/date.js
  */
 
 import _ from 'lodash';
-const assert = require( 'assert' ).strict;
+import strftime from 'strftime';
 
-import { pwixI18n } from 'meteor/pwix:i18n';
+_.merge( DateJs, {
 
-/*
- * @summary check an item vs a group of items to see if they are compatible
- * @param {Array} array the entity items array
- * @param {Object} item the item to be tested, with fields { id, start, end }
- * @param {Object} opts options
- *  - start: the name of the field which contains the start date of the DateJs, defaulting to 'effectStart'
- *  - end: the name of the field which contains the end date of the DateJs, defaulting to 'effectEnd'
- * @returns {Boolean} true if both are compatible
- */
-DateJs._check_against = function( array, item, opts={} ){
-    const startField = opts.start || 'effectStart';
-    const endField = opts.end || 'effectEnd';
+    // default formats used by this
+    format: {
+        strftime: '%Y-%m-%d',
+    },
 
-    let ok = true;
+    // infinite constants
+    infinite: {
+        end: 8640000000000000,
+        start: -8640000000000000
+    },
 
-    //console.debug( 'item', item.start, item.end );
-    array.every(( it ) => {
-        //console.debug( 'it', it[startField], it[endField],
-        //    'is_same_period', this._is_same_period( [ item.start, item.end ], [ it[startField], it[endField] ] ),
-        //    'overlap', this._intervals_overlap( [ item.start, item.end ], [ it[startField], it[endField] ] ));
-        if( !this._is_same_period( [ item.start, item.end ], [ it[startField], it[endField] ] )){
-            const overlap = this._intervals_overlap( [ item.start, item.end ], [ it[startField], it[endField] ] );
-            ok &&= ( overlap === -1 );
+    /**
+     * @summary Dates comparison
+     * @locus Anywhere
+     * @param {Date|String} a a date, infinite if not valid
+     * @param {Date|String} b another date, infinite if not valid
+     * @returns {Integer} -1 if a < b, +1 if a > b, 0 if a = b
+     */
+    compare( a, b ){
+        const aa = this.sanitize( a ) || new Date( this.infinite.start );
+        const bb = this.sanitize( b ) ||  new Date( this.infinite.start );
+        const aastr = this.toString( aa );
+        const bbstr = this.toString( bb );
+        return aastr < bbstr ? -1 : ( aastr === bbstr ? 0 : +1 );
+    },
+
+    /**
+     * @locus Anywhere
+     * @param {Date|String} date the input date
+     * @param {Integer} days the count of days to add
+     * @returns {Date} date+days
+     */
+    compute( date, days ){
+        let datesan = this.sanitize( date );
+        if( datesan ){
+            const timems = datesan.getTime() + ( days * this.dayms );
+            datesan.setTime( timems );
         }
-        return ok;
-    });
+        return datesan;
+    },
 
-    return ok;
-};
+    /**
+     * @summary Test for an infinity date
+     * @param {Date|String} date
+     * @returns {Boolean} whether the infinite
+     */
+    isInfinite( date ){
+        const t = new Date( date ).getTime()
+        return t === this.infinite.start || t === this.infinite.end;
+    },
 
-/*
- * @summary compare two values
- * @param {Any} a, may be undefined
- * @param {Any} b, may be undefined
- * @param {Object} opts options with following keys:
- *  - type: a data type, defaulting to a scalar (string or number) one
- * @returns -1 if a strictly lesser than b,
- *  +1 if a strictly greater than b
- *  0 if a equal b.
- */
-DateJs._compare_typed_values = function( a, b, opts ){
-    if( _.isNil( a )){
-        if( _.isNil( b )){
-            return 0;
+    /**
+     * @summary Test for a valid date string
+     * @param {Date|String} date
+     * @returns {Boolean} whether the string represents a valid date according to us
+     */
+    isValid( date ){
+        let d = null;
+        if( date instanceof Date ){
+            d = new Date( date );
+        } else if( _.isString( date )){
+            const parts = date.split( '-' );
+            if( parts.length !== 3 ){
+                d = new Date( date );
+                return this.isValid( d );
+            }
+            if( Number( parts[2] < 1 )){
+                return false;
+            }
+            d = new Date( date );
         }
-        return -1;
-    } else if( _.isNil( b )){
-        return 1;
-    } else {
-        if( !opts.type || opts.type === 'Scalar' ){
-            return a < b ? -1 : ( a > b ? 1 : 0 );
-        }
-        if( opts.type === 'Array' ){
-            return a.length < b.length ? -1 : ( a.length > b.length ? +1 : 0 );
-        }
-        if( opts.type === 'Date' ){
-            return DateJs.Date.compare( a, b );
-        }
-    }
-};
+        return Boolean( d ? !isNaN( d.getTime()) : false );
+    },
 
-/*
- * @summary compute the intersection of two intervals
- * @param {Array} a an array of two dates, one or both may being null/unset/invalid
- * @param {Array} b same
- * @returns {Array} an array of two dates which are the intersection of a and b, each date may being null
- */
-DateJs._intervals_overlap = function( a, b ){
-    const startDate1 = DateJs.Date.sanitize( a[0] ) || new Date( DateJs.Date.infinite.start ); // Represents the beginning of time
-    const endDate1 = DateJs.Date.sanitize( a[1] ) || new Date( DateJs.Date.infinite.end );   // Represents the end of time
-    const startDate2 = DateJs.Date.sanitize( b[0] ) || new Date( DateJs.Date.infinite.start );
-    const endDate2 = DateJs.Date.sanitize( b[1] ) || new Date( DateJs.Date.infinite.end );
-
-    let latestStartDate = new Date( Math.max( startDate1, startDate2 ));
-    let earliestEndDate = new Date( Math.min( endDate1, endDate2 ));
-
-    if( latestStartDate <= earliestEndDate ){
-        if(  DateJs.Date.isInfinite( latestStartDate )){
-            latestStartDate = null;
-        }
-        if(  DateJs.Date.isInfinite( earliestEndDate )){
-            earliestEndDate = null;
-        }
-        return [ latestStartDate, earliestEndDate ];
-    } else {
-        return -1;  // No intersection
-    }
-};
-
-/*
- * @param {Array} a an array of two dates, one or both may be null/unset/undefined
- * @param {Array} b an array of two dates, one or both may be null/unset/undefined
- * @returns {Boolean} true if the periods are the same
- */
-DateJs._is_same_period = function( a, b, opts ){
-    const startDate1 = DateJs.Date.sanitizeToMs( a[0], DateJs.Date.infinite.start ); // Represents the beginning of time
-    const endDate1 = DateJs.Date.sanitizeToMs( a[1], DateJs.Date.infinite.end );   // Represents the end of time
-    const startDate2 = DateJs.Date.sanitizeToMs( b[0], DateJs.Date.infinite.start );
-    const endDate2 = DateJs.Date.sanitizeToMs( b[1], DateJs.Date.infinite.end );
-    const same = startDate1 === startDate2 && endDate1 === endDate2;
-    //console.debug( 'same_period', a, b, startDate1, endDate1, startDate2, endDate2, same );
-    return same;
-};
-
-/**
- * @summary Compare the specified field among all DateJs records and returns the analyze
- *  this let us have a different display when a field (e.g. a label) has changed between two periods
- *  and simultaneously provide a default display
- * @param {Object} group the item group as an object { id, items }
- * @param {String} field the name of the field to analyze
- * @param {Object} opts an options object with following keys:
- *  - closest: if set, the closest DateJs record
- *  - type: if set, expected data type, defaulting to string
- * @returns {Object} the result as an object with following keys:
- *  -
- */
-DateJs.analyze = function( group, field, opts={} ){
-    //console.debug( 'group', group, 'field', field, 'opt', opts );
-    let value = null;
-    let count = 0;
-    let unset = 0;
-    let empty = 0;
-    let first = false;  // have found a first set and not empty value
-    let diff = false;   // have found at least two distinct set and not empty values
-    let byId = {};
-    group.items.every(( it ) => {
-        count += 1;
-        if( Object.keys( it ).includes( field )){
-            if( it[field] ){
-                if( !first ){
-                    value = ( opts.type === 'Array' ) ? it[field][0] : it[field];
-                    first = true;
-                //} else if( it[field] !== value ){
-                } else if( this._compare_typed_values( it[field], value, opts ) !== 0 ){
-                    diff = true;
-                }
+    /**
+     * @summary Sanitize a date
+     * @param {Date|String} date a date, maybe null, unset or undefined
+     * @returns {Date|null} either a valid Date object, or null
+     */
+    sanitize( date ){
+        let d = null;
+        if( date ){
+            if( _.isString( date )){
+                d = new Date( date );
+            } else if( date instanceof Date ){
+                d = new Date( date );
             } else {
-                empty += 1;
-            }
-            byId[ it._id ] = it[field];
-        } else {
-            unset += 1;
-            byId[ it._id ] = undefined;
-        }
-        return true;
-    });
-    // if we have found a single set and not empty value, that's fine
-    //  else we want return the value of the closest element
-    if( diff ){
-        if( opts.closest ){
-            value = opts.closest[field];
-        } else {
-            const closest = this.closest( group.items );
-            value = closest[field];
-        }
-    }
-    // return all informations found for this field
-    return {
-        field: field,
-        count: count,
-        unset: unset,
-        empty: empty,
-        first: first,
-        diff: diff,
-        value: value,
-        byId: byId
-    };
-};
-
-/**
- * @locus Anywhere
- * @param {Array} array the array of available DateJs records for the entity
- * @param {Object} opts options
- *  - start: the name of the field which contains the start date of the DateJs, defaulting to 'effectStart'
- *  - end: the name of the field which contains the end date of the DateJs, defaulting to 'effectEnd'
- *  - date: the searched DateJs date, as a Date object, defaulting to current date
- * @returns {Object} the record whose DateJs period includes the specified date, or null if none
- *  This method is so more strict than closest().
- */
-DateJs.atDate = function( array, opts={} ){
-    const startField = opts.start || 'effectStart';
-    const endField = opts.end || 'effectEnd';
-    const date = opts.date || new Date();
-    const dateTime = date.getTime();    // the target date as epoch
-
-    // first sort the provided array by ascending start effect date
-    array.sort(( a, b ) => { return DateJs.Date.compare( a[startField], b[startField ] ); });
-
-    // then explore the array until finding a start effect date after the searched date
-    //  and take the previous one
-    let greater = -1;
-    for( let i=0 ; i<array.length ; ++i ){
-        const record = array[i];
-        if( record[startField] ){
-            const stime = record[startField].getTime();
-            if( stime > dateTime ){
-                greater = i;
-                break;
+                console.warn( 'neither a Date nor a string', date );
             }
         }
-    }
-
-    // at the end, either we have found a record which comes after, or not
-    let record = null;
-    if( greater === -1 ){
-        if( array.length ){
-            record = array[ array.length-1 ];
-        }
-    } else if( greater > 0 ){
-        record = array[ greater-1 ];
-    }
-    // if the first record is already greater than the date, then no found record
-
-    // we are sure that the start date is lesser than our date - but we must verify that the end date is at least equal
-    if( record && record[endField] ){
-        const stime = record[endField].getTime();
-        if( stime <= dateTime ){
-            record = null;
-        }
-    }
-
-    //console.debug( 'array', array, 'greater', greater, 'record', record );
-    return record;
-};
-
-/**
- * @locus Anywhere
- * @summary Check whether the candidate ending effect date would be valid regarding the whole entity items
- *  It may notably be invalid if inside of an already allocated DateJs period.
- * @param {Array} array the array of available DateJs records for the entity
- * @param {Object} item the item which holds the candidate effect date
- * @param {Object} opts options
- *  - start: the name of the field which contains the start date of the DateJs, defaulting to 'effectStart'
- *  - end: the name of the field which contains the end date of the DateJs, defaulting to 'effectEnd'
- * @returns {String} an error message or null
- */
-DateJs.checkEnd = function( array, item, opts={} ){
-    const startField = opts.start || 'effectStart';
-    const endField = opts.end || 'effectEnd';
-    let res = null;
-
-    if( item[endField] && !DateJs.Date.isValid( item[endField] )){
-        console.warn( 'invalid date item[endField]', item[endField] );
-        res = pwixI18n.label( I18N, 'check.invalid_date' );
-
-    } else if( this.isValidPeriod( item[startField], item[endField] )){
-            const ok = this._check_against( array, { start: item[startField], end: item[endField] }, opts );
-            res = ok ? null : pwixI18n.label( I18N, 'check.end_incompatible');
-    } else {
-        res = pwixI18n.label( I18N, 'check.invalid_period' );
-    }
-
-    return res;
-};
-
-/**
- * @locus Anywhere
- * @summary Check whether the candidate starting effect date would be valid regarding the whole entity items
- *  It may notably be invalid if inside of an already allocated DateJs period.
- * @param {Array} array the array of available DateJs records for the entity
- * @param {Object} item the item which holds the candidate effect date
- * @param {Object} opts options
- *  - start: the name of the field which contains the start date of the DateJs, defaulting to 'effectStart'
- *  - end: the name of the field which contains the end date of the DateJs, defaulting to 'effectEnd'
- * @returns {String} an error message or null
- */
-DateJs.checkStart = function( array, item, opts={} ){
-    const startField = opts.start || 'effectStart';
-    const endField = opts.end || 'effectEnd';
-    let res = null;
-
-    if( item[startField] && !DateJs.Date.isValid( item[startField] )){
-        console.error( 'invalid date item[startField]', item[startField] );
-        res = pwixI18n.label( I18N, 'check.invalid_date' );
-
-    } else if( this.isValidPeriod( item[startField], item[endField] )){
-        const ok = this._check_against( array, { start: item[startField], end: item[endField] }, opts );
-        res = ok ? null : pwixI18n.label( I18N, 'check.start_incompatible');
-    } else {
-        res = pwixI18n.label( I18N, 'check.invalid_period' );
-    }
-
-    return res;
-};
-
-/**
- * @locus Anywhere
- * @param {Object} entity the current entity published document, i.e. with its DYN.records array
- * @param {Object} opts options
- *  - start: the name of the field which contains the start date of the DateJs, defaulting to 'effectStart'
- *  - end: the name of the field which contains the end date of the DateJs, defaulting to 'effectEnd'
- *  - date: the searched DateJs date, as a Date object, defaulting to current date
- * @returns {Object} with following keys:
- *  - record: the record whose DateJs period is the closest of the specified date (and, ideally, includes it)
- *  - index: the corresponding index in the sorted array
- */
-DateJs.closest = function( entity, opts={} ){
-    let array = entity.DYN.records;
-    assert( _.isArray( array ), 'expect DYN.records be an array' );
-
-    const startField = opts.start || 'effectStart';
-    const endField = opts.end || 'effectEnd';
-    const date = opts.date || new Date();
-    const dateTime = date.getTime();    // the target date as epoch
-
-    // first sort the provided array by ascending start effect date
-    array.sort(( a, b ) => { return DateJs.Date.compare( a[startField], b[startField ] ); });
-
-    // then explore the array until finding a start effect date after the searched date
-    //  and take the previous one
-    let greater = -1;
-    for( let i=0 ; i<array.length ; ++i ){
-        const record = array[i];
-        if( record[startField] ){
-            const stime = record[startField].getTime();
-            if( stime > dateTime ){
-                greater = i;
-                break;
+        if( d ){
+            if( !this.isValid( d )){
+                d = null;
             }
         }
-    }
-    // at the end, either we have found a record which comes after, or not
-    let found = -1;
-    if( greater === -1 ){
-        if( array.length ){
-            found = array.length - 1;
-        }
-    } else if( greater > 0 ){
-        found = greater - 1;
-    } else {
-        found = 0;
-    }
-    // at last
-    return {
-        record: array[found],
-        index: found
-    };
-};
-
-/*
- * @summary Group records by entity
- * @param {Array} array the array to be grouped (e.g. directly fetched from the database)
- * @param {Object} opts options
- *  - entity: the name of the field which identifies an item, whatever be the DateJs, defaulting to 'entity'
- *  - start: the name of the field which contains the start date of the DateJs, defaulting to 'effectStart'
- * @returns {Array} an array of objects with following keys:
- *  - entity: the item identifier
- *  - items: the array of DateJs records for this entity item, sorted by ascending start effect date
- *
- * Note: this structure is needed as we want keep the ability to add some other keys to each item object.
- */
-/*
-DateJs.group = function( array, opts={} ){
-    const itemid = opts.entity || 'entity';
-    const startField = opts.start || 'effectStart';
-
-    // build a hash indexed by entity identifiers with all the records as a value array
-    let hash = {};
-    array.every(( it ) => {
-        if( Object.keys( hash ).includes( it[itemid] )){
-            hash[ it[itemid] ].push( it );
-        } else {
-            hash[ it[itemid] ] = [ it ];
-        }
-        return true;
-    });
-
-    // sort each item array by ascending start effect date
-    Object.keys( hash ).every(( id ) => {
-        hash[id].sort(( a, b ) => { return DateJs.Date.compare( a[startField], b[startField ] ); });
-        return true;
-    });
-
-    // last return the formatted result
-    let result = [];
-    Object.keys( hash ).every(( id ) => {
-        let o = {};
-        o[itemid] = id;
-        o.items = hash[id];
-        result.push( o );
-        return true;
-    });
-
-    return result;
-};
-*/
-
-/**
- * @summary Find holes, i.e. period of times which are not in a DateJs period
- * @param {Array} array an array of objects which may contain start and end effect dates
- * @param {Object} opts options
- *  - start: the name of the field which contains the start date of the DateJs, defaulting to 'effectStart'
- *  - end: the name of the field which contains the end date of the DateJs, defaulting to 'effectEnd'
- * @returns {Array} an array, maybe empty, of objects with following keys:
- *  - start: the starting uncovered date, may be unset for infinite
- *  - end: the ending uncovered date, may be unset for infinite
- */
-DateJs.holes = function( array, opts={} ){
-    const startField = opts.start || 'effectStart';
-    const endField = opts.end || 'effectEnd';
-
-    let holes = [];
-
-    // first sort the provided array by ascending start effect date
-    array.sort(( a, b ) => { return DateJs.Date.compare( a[startField], b[startField ] ); });
-
-    //  last item should have effectEnd unset
-    let lastEnd = null;
-
-    for( let i=0 ; i<array.length ; ++i ){
-        const it = array[i];
-        // if we have a start date, then found a hole if last end date was lesser than start-1
-        if( it[startField] ){
-            let startBefore = DateJs.Date.compute( it[startField], -1 );
-            if( !lastEnd || DateJs.Date.toString( lastEnd ) < DateJs.Date.toString( startBefore )){
-                let o = {};
-                o.end = startBefore;
-                if( lastEnd ){
-                    o.start = DateJs.Date.compute( lastEnd, +1 );
-                }
-                holes.push( o );
-            }
-        }
-        // if we have an end date, just keep it
-        if( it[endField] ){
-            lastEnd = it[endField];
-        }
-        // but at the end
-        if( i === array.length-1 ){
-            if( it[endField] ){
-                let o = {};
-                o.start = DateJs.Date.compute( it[endField], +1 );
-                holes.push( o );
-            }
-        }
-    }
-
-    return holes;
-};
-
-/**
- * @summary Check for a valid period
- * @param {Date|String} start the starting date of the period
- * @param {Date|String} end the ending date of the period
- * @returns {Boolean} whether the period is valid
- */
-DateJs.isValidPeriod = function( start, end ){
-    const startValue = DateJs.Date.sanitize( start ) || new Date( DateJs.Date.infinite.start );
-    const endValue = DateJs.Date.sanitize( end ) ||  new Date( DateJs.Date.infinite.end );
-    return startValue <= endValue;
-};
-
-/**
- * @summary Build a new record for a new period
- * @param {Object} entity the current entity published document, i.e. with its DYN.records array
- * @param {Object} period the new DateJs period (currently free), as a { start, end } object
- * @param {Object} opts options
- *  - start: the name of the field which contains the start date of the DateJs, defaulting to 'effectStart'
- *  - end: the name of the field which contains the end date of the DateJs, defaulting to 'effectEnd'
- * @returns {Object} with following keys:
- *  - records: the new entity records array, including the new one, in the order of ascending effect start date
- *  - index: the index of the new record in the returned array
- */
-DateJs.newRecord = function( entity, period, opts={} ){
-    let array = entity.DYN.records;
-    assert( _.isArray( array ), 'expect DYN.records be an array' );
-
-    const startField = opts.start || 'effectStart';
-    const endField = opts.end || 'effectEnd';
-    let res = null;
-    //console.debug( 'period', period, DateJs.Date.isValid( period.start ), DateJs.Date.isValid( period.end ));
-
-    // search for the previous record (or the next one if first)
-    let found = -1;
-    if( !DateJs.Date.isValid( period.start )){
-        found = 0;
-    } else {
-        for( let i=0 ; i<array.length ; ++i ){
-            const it = array[i];
-            if( DateJs.Date.compare( period.start, it[startField] ) === +1 ){
-                found = i-1;
-                break;
-            }
-        }
-    }
-    if( found === -1 ){
-        found = array.length - 1;
-    }
-    if( found >= 0 ){
-        res = [ ...array ];
-        let record = _.cloneDeep( array[found] );
-        // Mongo identifier
-        delete record._id;
-        // collection-timestampable attributes
-        delete record.createdAt;
-        delete record.createdBy;
-        delete record.updatedAt;
-        delete record.updatedBy;
-        // this DateJs atributes
-        record[startField] = DateJs.Date.sanitize( period.start );
-        record[endField] = DateJs.Date.sanitize( period.end );
-        record.NEWRECORD = true;
-        res.push( record );
-        res.sort(( a, b ) => { return DateJs.Date.compare( a[startField], b[startField ] ); });
-    } else {
-        console.warn( 'unable to find a reference record', period, array, opts );
-    }
-    // search where has been sorted this new record
-    let index = -1;
-    for( let i=0 ; i<res.length ; ++i ){
-        if( res[i].NEWRECORD === true ){
-            index = i;
-            delete res[i].NEWRECORD;
-            break;
-        }
-    }
-    // at last
-    return {
-        records: res,
-        index: index
-    };
-};
-
-    /*
-    ***
-    ***
-    ***
-    ***
-    ***
-    ***
-    ***
-    */
-
-    // just a shortcut to our Date object
-    //Date: DateJs.Date,
-
-    /*
-     * @summary Compare the DateJs of two records, saying how they compare
-     *  Actually only comparing the starting date of the DateJs records
-     * @param {Object} a an item
-     * @param {Object} b another item
-     * @param {Object} opts options
-     *  - start: the name of the field which contains the start date of the DateJs, defaulting to 'effectStart'
-     * @returns {Integer} -1 if a begins before b
-     *                    +1 if a begins after b
-     *                     0 if a and b begins at the same date
-     */
-    /*
-    x_cmpValidities( a, b, opts={} ){
-        const startField = opts.start || 'effectStart';
-        const res = this.Date.compare( a[startField], b[startField ] );
-        //console.debug( a, b, res );
-        return res;
+        return d;
     },
-    */
 
-    /*
-     * @summary Dump starting and ending effect dates from a record or an array of records
-     * @locus Anywhere
-     * @param {Object|Array} o the object or array to be dumped
-     * @param {Object} opts options
-     *  - start: the name of the field which contains the start date of the DateJs, defaulting to 'effectStart'
-     *  - end: the name of the field which contains the end date of the DateJs, defaulting to 'effectEnd'
+    /**
+     * @summary Sanitize a date, returning a miliseconds timestamp since Epoch
+     * @param {Date|String} date a date, maybe null, unset or undefined
+     * @param {Integer} defaultValue if the provided date is not valid
+     * @returns {Integer} the milliseconds count since epoch
      */
-    /*
-    x_dump( o, opts={} ){
-        const startField = opts.start || 'effectStart';
-        const endField = opts.end || 'effectEnd';
-
-        const ar = Array.isArray( o ) ? o : [ o ];
-        for( let i=0 ; i<ar.length ; ++i ){
-            console.debug( 'i', i, 'effectStart', ar[i][startField] );
-            console.debug( 'i', i, 'effectEnd', ar[i][endField] );
-        }
+    sanitizeToMs( date, defaultValue ){
+        return ( this.sanitize( date ) || new Date( defaultValue )).getTime();
     },
-    */
 
-    /*
-     * @summary Filter an array of records, returning the element which is valid at the specified date
-     * @locus Anywhere
-     * @param {Array} array the array to be filtered
-     * @param {Object} opts options
-     *  - start: the name of the field which contains the start date of the DateJs, defaulting to 'effectStart'
-     *  - end: the name of the field which contains the end date of the DateJs, defaulting to 'effectEnd'
-     *  - date: the searched DateJs UTC date, as a Date object, defaulting to DateJs.Date.UTC()
-     * @returns {Object} the current record at the date
+    /**
+     * @summary Format conversion
+     * @param {String} format the date strftime format (which is our coding standard)
+     * @returns {String} the jQuery format to be used notably in a datepicker
      */
-    /*
-    x_filter( array, opts={} ){
-        const startField = opts.start || 'effectStart';
-        const endField = opts.end || 'effectEnd';
-        const date = opts.date || this.Date.UTC();
-        const dateTime = date.getTime();
+    strftime2jquery( format ){
 
-        let result = null;
+        // jQuery formats without any equivalent in strftime
+        //  o - day of the year (no leading zeros)
+        //  m - month of year (no leading zero)
+        //  ! - Windows ticks (100ns since 01/01/0001)
 
-        array.every(( it ) => {
-            const current = Meteor.APP.DateJs.testCurrent( it );
-            if( current === 0 ){
-                result = it;
-            }
-            return result === null;
-        });
-
-        return result;
+        let str = format
+            .replace( /%A/g, 'DD' )         // full weekday name
+            .replace( /%a/g, 'D')           // abbreviated weekday name
+            .replace( /%B/g, 'MM')          // full month name
+            .replace( /%b/g, 'M')           // abbreviated month name
+                // %C: AD century (year / 100), padded to 2 digits
+                // %c: equivalent to %a %b %d %X %Y %Z in en_US (based on locale)
+            .replace( /%D/g, 'mm/dd/y' )    // equivalent to %m/%d/%y in en_US (based on locale)
+            .replace( /%d/g, 'dd' )         // day of the month, padded to 2 digits (01-31)
+            .replace( /%e/g, 'd' )          // day of the month, padded with a leading space for single digit values (1-31)
+            .replace( /%F/g, 'yy-mm-dd' )   // equivalent to %Y-%m-%d in en_US (based on locale)
+                // %H: the hour (24-hour clock), padded to 2 digits (00-23)
+                // %h: the same as %b (abbreviated month name)
+                // %I: the hour (12-hour clock), padded to 2 digits (01-12)
+            .replace( /%j/g, 'oo' )         // day of the year, padded to 3 digits (001-366)
+                // %k: the hour (24-hour clock), padded with a leading space for single digit values (0-23)
+                // %L: the milliseconds, padded to 3 digits [Ruby extension]
+                // %l: the hour (12-hour clock), padded with a leading space for single digit values (1-12)
+                // %M: the minute, padded to 2 digits (00-59)
+            .replace( /%m/g, 'mm' )         // the month, padded to 2 digits (01-12)
+                // %n: newline character
+                // %o: day of the month as an ordinal (without padding), e.g. 1st, 2nd, 3rd, 4th, ...
+                // %P: "am" or "pm" in lowercase (Ruby extension, based on locale)
+                // %p: "AM" or "PM" (based on locale)
+                // %R: equivalent to %H:%M in en_US (based on locale)
+                // %r: equivalent to %I:%M:%S %p in en_US (based on locale)
+                // %S: the second, padded to 2 digits (00-60)
+            .replace( /%s/g, '@' )          // the number of seconds since the Epoch, UTC
+                // %T: equivalent to %H:%M:%S in en_US (based on locale)
+                // %t: tab character
+                // %U: week number of the year, Sunday as the first day of the week, padded to 2 digits (00-53)
+                // %u: the weekday, Monday as the first day of the week (1-7)
+                // %v: equivalent to %e-%b-%Y in en_US (based on locale)
+                // %W: week number of the year, Monday as the first day of the week, padded to 2 digits (00-53)
+                // %w: the weekday, Sunday as the first day of the week (0-6)
+                // %X: equivalent to %T or %r in en_US (based on locale)
+                // %x: equivalent to %D in en_US (based on locale)
+            .replace( /%Y/g, 'yy' )         // the year with the century
+            .replace( /%y/g, 'y' )          // the year without the century, padded to 2 digits (00-99)
+                // %Z: the time zone name, replaced with an empty string if it is not found
+                // %z: the time zone offset from UTC, with a leading plus sign for UTC and zones east of UTC and a minus sign for those west of UTC, hours and minutes follow each padded to 2 digits and with no delimiter between them
+        return str;
     },
-    */
 
-    /*
+    /**
      * @locus Anywhere
-     * @param {Object} record the element to be tested
-     * @param {Object} opts options
-     *  - start: the name of the field which contains the start date of the DateJs, defaulting to 'effectStart'
-     *  - end: the name of the field which contains the end date of the DateJs, defaulting to 'effectEnd'
-     *  - date: the searched DateJs UTC date, as a Date object, defaulting to DateJs.Date.UTC()
-     * @returns {Integer} -1 if the record is in the past of the specified date
-     *                     0 if the specified date in inside of the record
-     *                    +1 if the record is in the future of the specified date
+     * @param {Date} date
+     * @param {Object} opts an option object with following keys
+     *  - format: the strftime desired format, defaulting to '%Y-%m-%d'
+     *  - default: the string to return if date is not set or empty, defaulting to ''
+     * @returns {String} the provided date as a formatted string
      */
-    /*
-    x_testCurrent( record, opts={} ){
-        const startField = opts.start || 'effectStart';
-        const endField = opts.end || 'effectEnd';
-        const date = opts.date || this.Date.UTC();
-        const dateTime = date.getTime();
-
-        const hasStart = this.Date.isValid( record[startField] );
-        const hasEnd = this.Date.isValid( record[endField] );
-        let res = null;
-        let cmp;
-
-        if( _.isNull( res )){
-            if( hasEnd ){
-                cmp = ( this.Date.compare( record[endField], date ));
-                // if date after the end of DateJs, then the record is in the past of the specified date
-                if( cmp === -1 ){
-                    res = -1;
-                }
-            }
+    toString( date, opts={} ){
+        let str;
+        if( this.isValid( date )){
+            str = strftime( opts.format || this.format.strftime, new Date( date ));
+        } else {
+            str = opts.default || '';
         }
-        if( _.isNull( res )){
-            if( hasStart ){
-                cmp = ( this.Date.compare( date, record[startField] ));
-                // if date before the start of DateJs, then the record is in the future of the specified date
-                //console.debug( date, record[startField], cmp );
-                if( cmp === -1 ){
-                    res = +1;
-                }
-            }
-        }
-        if( _.isNull( res )){
-            res = 0;
-        }
+        //console.debug( date, opts, str );
+        return str;
+    },
 
-        return res;
+    /* ***************************** */
+
+    // default formats used by this
+    formatx: {
+        jQuery: 'yy-mm-dd'
+    },
+
+    dayms: 86400000,
+
+    // switch hour
+    switchHour: '00:00:00',
+
+    // default timezone
+    timeZone: 'UTC',
+
+    /**
+     * @summary Returns the current date for the given timezone
+     * @param {String} timezone
+     * @returns {Date}
+     */
+    date( timezone ){
+        let date = new Date();
+        let str = date.toLocaleString( 'en-US', { timeZone: timezone });
+        //console.debug( 'date', date, 'str', str );
+        return new Date( str );
+    },
+
+    /**
+     * @locus Anywhere
+     * @returns {Date} the current UTC date with hour-minute-seconds=0
+     *
+     * Ex:
+     *  localtime: Thu Sep  7 09:38:21 PM CEST 2023
+     *  new Date(): 2023-09-07T19:38:21.057Z
+     *  today.toUTCString(): Thu, 07 Sep 2023 00:00:00 GMT
+     */
+    UTC(){
+        const today = new Date();
+        today.setUTCHours( 0, 0, 0, 0 );
+        return today;
     }
-        */
+});
