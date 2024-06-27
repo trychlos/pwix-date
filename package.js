@@ -1,6 +1,6 @@
 Package.describe({
     name: 'pwix:date',
-    version: '1.0.0-rc',
+    version: '1.0.0',
     summary: 'Common date conversions Javascript functions',
     git: 'https://github.com/trychlos/pwix-date.git',
     documentation: 'README.md'
