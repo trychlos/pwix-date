@@ -73,7 +73,8 @@ Instead we check npm versions of installed packages at runtime, on server startu
 Dependencies as of v 1.0.0:
 
 ```js
-    'lodash': '^4.17.0'
+    'lodash': '^4.17.0',
+    'strftime': '^0.10.2'
 ```
 
 Each of these dependencies should be installed at application level:
@@ -96,4 +97,4 @@ In case of support or error, please report your issue request to our [Issues tra
 
 ---
 P. Wieser
-- Last updated on 2024, Jun. 27th
+- Last updated on 2024, Jun. 28th
