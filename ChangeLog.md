@@ -2,9 +2,9 @@
 
 ## ChangeLog
 
-### 1.0.2-rc
+### 1.0.2
 
-    Release date: 
+    Release date: 2024- 7- 5
 
     - Improve README
     - Extend/fix the behaviour of date comparisons regarding the starting or ending infinites
@@ -23,4 +23,4 @@
 
 ---
 P. Wieser
-- Last updated on 2024, Jun. 28th
+- Last updated on 2024, Jul. 5th
