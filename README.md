@@ -40,15 +40,67 @@ Compare two dates, returning:
 
 - `start`: whether an undefined, or null, or invalid date is considered to be the infinite start, defaulting to `true`. Set to `false` to consider an infinite end.
 
+##### `DateJs.compute( date<Date|String|unset>, days<Integer> )`
+
+Compute the resulting date+days.
+
+Returns its result as a Date object.
+
+Note that an undefined, or null, or invalid date is considered to be an infinite one, and cannot be computed here. We return `null` in this case.
+
 ##### `DateJs.configure( o<Object> )`
 
 See [below](#configuration)
+
+Acts both as a getter and a setter.
+
+A reactive data source.
 
 ##### `DateJs.i18n.namespace()`
 
 Returns the i18n namespace used by the package. Used to add translations at runtime.
 
 Available both on the client and the server.
+
+##### `DateJs.isInfinite( date<Date|String|unset> )`
+
+Returns `true` if the provided date is infinite whether it is infinite start or infinite end, `false` else.
+
+Any null, or invalid or unset date is considered infinite.
+
+##### `DateJs.isValid( date<Date|String|unset> )`
+
+Returns `true` if the provided date is valid.
+
+Any null, or invalid or unset date is considered invalid.
+
+##### `DateJs.sanitize( date<Date|String|unset> )`
+
+Sanitize the provided date, returning:
+
+- either a valid `Date` object if the date is valid,
+
+- or `null` if the date is invalid.
+
+##### `DateJs.strftime2jquery( format<String> )`
+
+Tries to convert a `strftime` date-time format to its `jQuery` equivalent.
+
+Returns a jQuery-compatible format string.
+
+##### `DateJs.toMs( date<Date|String|unset>, defaultValue<Date|String|Integer|unset> )`
+
+Returns the milliseconds since Epoch of the provided date, defaulting to the provided default value, defaulting to the current local date.
+
+##### `DateJs.toString( date<Date|String|unset>, opts<Object> )`
+
+Returns the date as a string.
+
+`opts` is an optional options object with following keys:
+
+- `format`: the `strftime` desired format, defaulting to '%Y-%m-%d'
+
+- `default`: the string to return if date is not set or empty, defaulting to ''.
 
 ## Configuration
 

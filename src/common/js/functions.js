@@ -21,8 +21,8 @@ _.merge( DateJs, {
     /**
      * @summary Dates comparison
      * @locus Anywhere
-     * @param {Date|String} a a date, infinite if not valid
-     * @param {Date|String} b another date, infinite if not valid
+     * @param {Date|String|unset} a a date, infinite if unset or not valid
+     * @param {Date|String|unset} b another date, infinite if unset or not valid
      * @param {Object} opts an optional options object with following keys:
      *  - start: whether an undefined, or null, or invalid date is considered to be the infinite start, defaulting to true.
      *           set false to consider an infinite end
@@ -45,9 +45,10 @@ _.merge( DateJs, {
 
     /**
      * @locus Anywhere
-     * @param {Date|String} date the input date
+     * @param {Date|String|unset} date the input date, infinite if unset or not valid
      * @param {Integer} days the count of days to add
      * @returns {Date} date+days
+     * Note: an undefined, or null, or invalid date is considered to be an infinite one, and cannot be computed here. We return null in this case.
      */
     compute( date, days ){
         let datesan = this.sanitize( date );
@@ -60,17 +61,22 @@ _.merge( DateJs, {
 
     /**
      * @summary Test for an infinity date
-     * @param {Date|String} date
-     * @returns {Boolean} whether the infinite
+     * @param {Date|String|unset} date
+     * @returns {Boolean} whether the date is infinite
      */
     isInfinite( date ){
-        const t = new Date( date ).getTime()
-        return t === this.infinite.start || t === this.infinite.end;
+        const d = this.sanitize( date );
+        let infinite = true;
+        if( d ){
+            const t = new Date( d ).getTime()
+            infinite = ( t === this.infinite.start || t === this.infinite.end );
+        }
+        return infinite;
     },
 
     /**
      * @summary Test for a valid date string
-     * @param {Date|String} date
+     * @param {Date|String|unset} date
      * @returns {Boolean} whether the string represents a valid date according to us
      */
     isValid( date ){
@@ -93,7 +99,7 @@ _.merge( DateJs, {
 
     /**
      * @summary Sanitize a date
-     * @param {Date|String} date a date, maybe null, unset or undefined
+     * @param {Date|String|unset} date a date, maybe null, unset or undefined
      * @returns {Date|null} either a valid Date object, or null
      */
     sanitize( date ){
@@ -113,16 +119,6 @@ _.merge( DateJs, {
             }
         }
         return d;
-    },
-
-    /**
-     * @summary Sanitize a date, returning a miliseconds timestamp since Epoch
-     * @param {Date|String} date a date, maybe null, unset or undefined
-     * @param {Integer} defaultValue if the provided date is not valid
-     * @returns {Integer} the milliseconds count since epoch
-     */
-    sanitizeToMs( date, defaultValue ){
-        return ( this.sanitize( date ) || new Date( defaultValue )).getTime();
     },
 
     /**
@@ -179,6 +175,16 @@ _.merge( DateJs, {
                 // %Z: the time zone name, replaced with an empty string if it is not found
                 // %z: the time zone offset from UTC, with a leading plus sign for UTC and zones east of UTC and a minus sign for those west of UTC, hours and minutes follow each padded to 2 digits and with no delimiter between them
         return str;
+    },
+
+    /**
+     * @summary Sanitize a date, returning a miliseconds timestamp since Epoch
+     * @param {Date|String} date a date, maybe null, unset or undefined
+     * @param {Integer} defaultValue if the provided date is not valid
+     * @returns {Integer} the milliseconds count since epoch
+     */
+    toMs( date, defaultValue ){
+        return ( this.sanitize( date ) || new Date( defaultValue ) || new Date()).getTime();
     },
 
     /**
