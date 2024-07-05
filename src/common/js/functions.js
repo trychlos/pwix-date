@@ -23,14 +23,24 @@ _.merge( DateJs, {
      * @locus Anywhere
      * @param {Date|String} a a date, infinite if not valid
      * @param {Date|String} b another date, infinite if not valid
+     * @param {Object} opts an optional options object with following keys:
+     *  - start: whether an undefined, or null, or invalid date is considered to be the infinite start, defaulting to true.
+     *           set false to consider an infinite end
      * @returns {Integer} -1 if a < b, +1 if a > b, 0 if a = b
+     * Note: an undefined, or null, or invalid date is considered to be the infinite start, and so lesser than any other valid date.
      */
-    compare( a, b ){
-        const aa = this.sanitize( a ) || new Date( this.infinite.start );
-        const bb = this.sanitize( b ) ||  new Date( this.infinite.start );
+    compare( a, b, opts={} ){
+        let infinite = new Date( this.infinite.start );
+        if( opts.start === false ){
+            infinite = new Date( this.infinite.end );
+        }
+        const aa = this.sanitize( a ) || infinite;
+        const bb = this.sanitize( b ) ||  infinite;
         const aastr = this.toString( aa );
         const bbstr = this.toString( bb );
-        return aastr < bbstr ? -1 : ( aastr === bbstr ? 0 : +1 );
+        const res = aastr < bbstr ? -1 : ( aastr === bbstr ? 0 : +1 );
+        //console.debug( 'compare', a, b, infinite, res );
+        return res;
     },
 
     /**

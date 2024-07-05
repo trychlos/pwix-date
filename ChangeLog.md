@@ -6,7 +6,8 @@
 
     Release date: 
 
-    - 
+    - Improve README
+    - Extend/fix the behaviour of date comparisons regarding the starting or ending infinites
 
 ### 1.0.1
 

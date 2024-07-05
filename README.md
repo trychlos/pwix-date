@@ -28,6 +28,18 @@ The exported `DateJs` global object provides following items:
 
 #### Functions
 
+##### `DateJs.compare( a<Date|String|unset>, b<Date|String|unset>, opts<Object> )`
+
+Compare two dates, returning:
+
+- -1 if a lesser (is before) b
+- 0 if a equal b
+- +1 if a greater (is after) b.
+
+`opts` is an optional options object with following keys:
+
+- `start`: whether an undefined, or null, or invalid date is considered to be the infinite start, defaulting to `true`. Set to `false` to consider an infinite end.
+
 ##### `DateJs.configure( o<Object> )`
 
 See [below](#configuration)

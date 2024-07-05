@@ -11,7 +11,8 @@
 |   Id | Date       | Description and comment(s) |
 | ---: | :---       | :---                       |
 |    1 | 2024- 6-27 | Convert this Meteor package to a NPMJS one |
-|    2 |  |  |
+|    2 | 2024- 7- 4 | configure the date display format |
+|    3 |  |  |
 
 ---
 ## Done
