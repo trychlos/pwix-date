@@ -2,11 +2,11 @@
 
 ## ChangeLog
 
-### 1.0.4-rc
+### 2.0.0-rc
 
     Release date: 
 
-    - 
+    - Move DateJs.strftime2jquery() function to pwix:date-input package, thus bumping major candidate version number
 
 ### 1.0.3
 

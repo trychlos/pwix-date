@@ -122,62 +122,6 @@ _.merge( DateJs, {
     },
 
     /**
-     * @summary Format conversion
-     * @param {String} format the date strftime format (which is our coding standard)
-     * @returns {String} the jQuery format to be used notably in a datepicker
-     */
-    strftime2jquery( format ){
-
-        // jQuery formats without any equivalent in strftime
-        //  o - day of the year (no leading zeros)
-        //  m - month of year (no leading zero)
-        //  ! - Windows ticks (100ns since 01/01/0001)
-
-        let str = format
-            .replace( /%A/g, 'DD' )         // full weekday name
-            .replace( /%a/g, 'D')           // abbreviated weekday name
-            .replace( /%B/g, 'MM')          // full month name
-            .replace( /%b/g, 'M')           // abbreviated month name
-                // %C: AD century (year / 100), padded to 2 digits
-                // %c: equivalent to %a %b %d %X %Y %Z in en_US (based on locale)
-            .replace( /%D/g, 'mm/dd/y' )    // equivalent to %m/%d/%y in en_US (based on locale)
-            .replace( /%d/g, 'dd' )         // day of the month, padded to 2 digits (01-31)
-            .replace( /%e/g, 'd' )          // day of the month, padded with a leading space for single digit values (1-31)
-            .replace( /%F/g, 'yy-mm-dd' )   // equivalent to %Y-%m-%d in en_US (based on locale)
-                // %H: the hour (24-hour clock), padded to 2 digits (00-23)
-                // %h: the same as %b (abbreviated month name)
-                // %I: the hour (12-hour clock), padded to 2 digits (01-12)
-            .replace( /%j/g, 'oo' )         // day of the year, padded to 3 digits (001-366)
-                // %k: the hour (24-hour clock), padded with a leading space for single digit values (0-23)
-                // %L: the milliseconds, padded to 3 digits [Ruby extension]
-                // %l: the hour (12-hour clock), padded with a leading space for single digit values (1-12)
-                // %M: the minute, padded to 2 digits (00-59)
-            .replace( /%m/g, 'mm' )         // the month, padded to 2 digits (01-12)
-                // %n: newline character
-                // %o: day of the month as an ordinal (without padding), e.g. 1st, 2nd, 3rd, 4th, ...
-                // %P: "am" or "pm" in lowercase (Ruby extension, based on locale)
-                // %p: "AM" or "PM" (based on locale)
-                // %R: equivalent to %H:%M in en_US (based on locale)
-                // %r: equivalent to %I:%M:%S %p in en_US (based on locale)
-                // %S: the second, padded to 2 digits (00-60)
-            .replace( /%s/g, '@' )          // the number of seconds since the Epoch, UTC
-                // %T: equivalent to %H:%M:%S in en_US (based on locale)
-                // %t: tab character
-                // %U: week number of the year, Sunday as the first day of the week, padded to 2 digits (00-53)
-                // %u: the weekday, Monday as the first day of the week (1-7)
-                // %v: equivalent to %e-%b-%Y in en_US (based on locale)
-                // %W: week number of the year, Monday as the first day of the week, padded to 2 digits (00-53)
-                // %w: the weekday, Sunday as the first day of the week (0-6)
-                // %X: equivalent to %T or %r in en_US (based on locale)
-                // %x: equivalent to %D in en_US (based on locale)
-            .replace( /%Y/g, 'yy' )         // the year with the century
-            .replace( /%y/g, 'y' )          // the year without the century, padded to 2 digits (00-99)
-                // %Z: the time zone name, replaced with an empty string if it is not found
-                // %z: the time zone offset from UTC, with a leading plus sign for UTC and zones east of UTC and a minus sign for those west of UTC, hours and minutes follow each padded to 2 digits and with no delimiter between them
-        return str;
-    },
-
-    /**
      * @summary Sanitize a date, returning a miliseconds timestamp since Epoch
      * @param {Date|String} date a date, maybe null, unset or undefined
      * @param {Integer} defaultValue if the provided date is not valid

@@ -82,12 +82,6 @@ Sanitize the provided date, returning:
 
 - or `null` if the date is invalid.
 
-##### `DateJs.strftime2jquery( format<String> )`
-
-Tries to convert a `strftime` date-time format to its `jQuery` equivalent.
-
-Returns a jQuery-compatible format string.
-
 ##### `DateJs.toMs( date<Date|String|unset>, defaultValue<Date|String|Integer|unset> )`
 
 Returns the milliseconds since Epoch of the provided date, defaulting to the provided default value, defaulting to the current local date.
