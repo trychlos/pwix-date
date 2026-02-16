@@ -12,6 +12,7 @@ This Meteor package is installable with the usual command:
 
 ```sh
     meteor add pwix:date
+    meteor npm install lodash strftime --save
 ```
 
 ## Usage

@@ -21,11 +21,22 @@ DateJs._defaults = {
  */
 DateJs.configure = function( o ){
     if( o && _.isObject( o )){
-        _conf = _.merge( DateJs._defaults, _conf, o );
-        DateJs._conf.set( _conf );
-        // be verbose if asked for
-        if( _conf.verbosity & DateJs.C.Verbose.CONFIGURE ){
-            console.log( 'pwix:date configure() with', o );
+        // check that keys exist
+        let built_conf = {};
+        Object.keys( o ).forEach(( it ) => {
+            if( Object.keys( DateJs._defaults ).includes( it )){
+                built_conf[it] = o[it];
+            } else {
+                console.warn( 'pwix:date configure() ignore unmanaged key \''+it+'\'' );
+            }
+        });
+        if( Object.keys( built_conf ).length ){
+            _conf = _.merge( DateJs._defaults, _conf, built_conf );
+            DateJs._conf.set( _conf );
+            // be verbose if asked for
+            if( _conf.verbosity & DateJs.C.Verbose.CONFIGURE ){
+                console.log( 'pwix:date configure() with', built_conf );
+            }
         }
     }
     // also acts as a getter
