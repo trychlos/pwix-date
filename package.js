@@ -1,6 +1,6 @@
 Package.describe({
     name: 'pwix:date',
-    version: '2.0.1-rc.0',
+    version: '2.1.0-rc.0',
     summary: 'Common date conversions Javascript functions',
     git: 'https://github.com/trychlos/pwix-date.git',
     documentation: 'README.md'
@@ -30,6 +30,7 @@ function configure( api ){
     api.versionsFrom([ '2.9.0', '3.0-rc.0' ]);
     _use( 'check' );
     _use( 'ecmascript' );
+    _use( 'pwix:logger@1.0.0-rc' );
     _use( 'reactive-var' );
     _use( 'tmeasday:check-npm-versions@1.0.2 || 2.0.0-beta.0', 'server' );
 }

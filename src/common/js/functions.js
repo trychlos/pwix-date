@@ -5,6 +5,10 @@
 import _ from 'lodash';
 import strftime from 'strftime';
 
+import { Logger } from 'meteor/pwix:logger';
+
+const logger = Logger.get();
+
 _.merge( DateJs, {
 
     // default formats used by this
@@ -39,7 +43,6 @@ _.merge( DateJs, {
         const aastr = this.toString( aa );
         const bbstr = this.toString( bb );
         const res = aastr < bbstr ? -1 : ( aastr === bbstr ? 0 : +1 );
-        //console.debug( 'compare', a, b, infinite, res );
         return res;
     },
 
@@ -110,7 +113,7 @@ _.merge( DateJs, {
             } else if( date instanceof Date ){
                 d = new Date( date );
             } else {
-                console.warn( 'neither a Date nor a string', date );
+                logger.warn( 'neither a Date nor a string', date );
             }
         }
         if( d ){
@@ -146,7 +149,6 @@ _.merge( DateJs, {
         } else {
             str = opts.default || '';
         }
-        //console.debug( date, opts, str );
         return str;
     },
 
@@ -173,7 +175,6 @@ _.merge( DateJs, {
     date( timezone ){
         let date = new Date();
         let str = date.toLocaleString( 'en-US', { timeZone: timezone });
-        //console.debug( 'date', date, 'str', str );
         return new Date( str );
     },
 

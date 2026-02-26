@@ -4,7 +4,10 @@
 
 import _ from 'lodash';
 
+import { Logger } from 'meteor/pwix:logger';
 import { ReactiveVar } from 'meteor/reactive-var';
+
+const logger = Logger.get();
 
 let _conf = {};
 DateJs._conf = new ReactiveVar( _conf );
@@ -27,16 +30,13 @@ DateJs.configure = function( o ){
             if( Object.keys( DateJs._defaults ).includes( it )){
                 built_conf[it] = o[it];
             } else {
-                console.warn( 'pwix:date configure() ignore unmanaged key \''+it+'\'' );
+                logger.warn( 'configure() ignore unmanaged key \''+it+'\'' );
             }
         });
         if( Object.keys( built_conf ).length ){
             _conf = _.merge( DateJs._defaults, _conf, built_conf );
             DateJs._conf.set( _conf );
-            // be verbose if asked for
-            if( _conf.verbosity & DateJs.C.Verbose.CONFIGURE ){
-                console.log( 'pwix:date configure() with', built_conf );
-            }
+            logger.verbose({ verbosity: _conf.verbosity, against: DateJs.C.Verbose.CONFIGURE }, 'configure() with', built_conf );
         }
     }
     // also acts as a getter
