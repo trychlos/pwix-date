@@ -2,9 +2,9 @@
 
 ## ChangeLog
 
-### 2.1.0-rc.0
+### 2.1.0
 
-    Release date: 
+    Release date: 2026- 4- 2
 
     - configure() now warns for unmanaged keys
     - Use pwix:logger universal logger, which replaces both 'console', '_trace()' and '_verbose()' functions, thus bumping minor candidate version number
@@ -42,4 +42,4 @@
 
 ---
 P. Wieser
-- Last updated on 2026, Feb. 10th
+- Last updated on 2026, Apr. 2nd
