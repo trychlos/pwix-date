@@ -6,7 +6,7 @@
 
     Release date: 
 
-    - 
+    - Define new DateJs.msToHuman() function and add pwix:i18n dependency, thus bumping minor candidate version number
 
 ### 2.1.0
 

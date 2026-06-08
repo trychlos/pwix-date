@@ -75,6 +75,10 @@ Returns `true` if the provided date is valid.
 
 Any null, or invalid or unset date is considered invalid.
 
+##### `DateJs.msToHuman( ms<Integer> )`
+
+Converts the `ms` value into a human-readable string.
+
 ##### `DateJs.sanitize( date<Date|String|unset> )`
 
 Sanitize the provided date, returning:

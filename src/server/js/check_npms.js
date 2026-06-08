@@ -10,6 +10,7 @@ if( false ){
 
 checkNpmVersions({
     'lodash': '^4.17.0',
+    'printf': '^0.6.1',
     'strftime': '^0.10.2'
 },
     'pwix:date'
