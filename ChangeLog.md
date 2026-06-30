@@ -2,9 +2,9 @@
 
 ## ChangeLog
 
-### 2.1.1-rc.0
+### 2.1.1
 
-    Release date: 
+    Release date: 2026- 6-30
 
     - Define new DateJs.msToHuman() function and add pwix:i18n dependency, thus bumping minor candidate version number
 
@@ -48,4 +48,4 @@
 
 ---
 P. Wieser
-- Last updated on 2026, Apr. 2nd
+- Last updated on 2026, Jun. 30th

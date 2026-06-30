@@ -137,6 +137,7 @@ Dependencies as of v 2.1.0:
 
 ```js
     'lodash': '^4.17.0',
+    'printf': '^0.6.1',
     'strftime': '^0.10.2'
 ```
 
@@ -160,4 +161,4 @@ In case of support or error, please report your issue request to our [Issues tra
 
 ---
 P. Wieser
-- Last updated on 2026, Apr. 2nd
+- Last updated on 2026, Jun. 30th
